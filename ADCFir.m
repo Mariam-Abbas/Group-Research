@@ -2,6 +2,7 @@ global data;
 data = niftiread("nonPregnant1708_2101.nii.gz");
 global protocol_21;
 realSignals = data;
+protocol_21 = load('protocol_21.txt');
 bValues = protocol_21(:,4);
 trueSignal = squeeze(data(101, 91, 26, :));
 global best_ADC;
