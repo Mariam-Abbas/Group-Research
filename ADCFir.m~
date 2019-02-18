@@ -73,8 +73,9 @@ function foo = plot_ADC(best_ADC)
        plotsignal(i) = best_ADC(2)*exp(-1*bValues(i)*best_ADC(1,1));
     end
     figure();
-    hold on;
+    subplot(2,1,1);
     scatter(bValues , plotsignal);
-    scatter(bValues, squeeze(data(101, 91, 26, :)));
+    subplot(2,1,2);
+    scatter(bValues, data);
     
 end
