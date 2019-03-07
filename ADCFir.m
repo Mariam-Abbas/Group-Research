@@ -13,26 +13,45 @@ global leftover_error;
 
 global model_to_fit;
 % 0 - ADC Model
-% 1 - ADC-ADC Model?
+% 1 - ADC-ADC Model
 % 2 - Stick Model
 % 3 - Stick-Stick Model
 % 4 - IVIM Model
 % 5 - Ball Model
 % 6 - Zeppelin Model
+% 7 - Ball-Ball Model
+% 8 - Zeppelin-Zeppelin Model
+% 9 -  ADC- Stick Model
+% 10 - Stick - ADC Model
+% 11 - ADC - Ball Model
+% 12 - Ball - ADC Model
+% 13 - ADC - Zeppelin Model
+% 14 - Zeppelin - ADC Model
+% 15 - Stick - Ball Model
+% 16 - Ball - Stick Model
+% 15 - Stick - Zeppelin Model
+% 16 - Zeppelin -Stick Model
+% 17 - Ball - Zeppelin Model
+% 18 - Zeppelin - Ball Model
+
+
 % 7 - Tensor Model
 
 %x0 = get_start_value(lb, ub);
 
 %Run and Display Result:
-[u, coordinates] = mask_coodinates_extractor('seg_1.nii.gz');
-
-[x, y, z] = size(coordinates);
-for coordinate_value = 1 : 1;%x; 
-    x_val = coordinates(1, coordinate_value);
-    y_val = coordinates(2, coordinate_value);
-    z_val = coordinates(3, coordinate_value);
-    minimised = run_fmincon(1, x_val, y_val, z_val);
-end 
+    [u, coordinates] = mask_coodinates_extractor('seg_1.nii.gz');
+    [x, y, z] = size(coordinates);
+    for coordinate_value = 1 : 1;%x; 
+        for model = 1: 1;%7;
+            x_val = coordinates(1, coordinate_value);
+            y_val = coordinates(2, coordinate_value);
+            z_val = coordinates(3, coordinate_value);
+            minimised = run_fmincon(model, x_val, y_val, z_val);
+            ranking(model) = minimised;
+        end 
+    end
+    
 function minimised = run_fmincon(model_number, x, y ,z)
     global data;
     global true_signal;
