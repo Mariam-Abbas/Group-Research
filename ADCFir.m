@@ -1,17 +1,18 @@
 %Globals:
 global data;
 data = niftiread("nonPregnant1708_2101.nii.gz");
-realSignals = data;
-trueSignal = squeeze(data(101, 91, 26, :));
 
 global protocol_21;
 protocol_21 = load('protocol_21.txt');
-bValues = protocol_21(:,4);
+
 
 global plotsignal;
+
 global leftover_error;
+leftover_error = int64(0);
 
 global model_to_fit;
+
 % 0 - Ball Model
 % 1 - Ball-Ball Model
 % 2 - Stick Model
@@ -23,13 +24,12 @@ global model_to_fit;
 % 8 - Stick - Ball Model
 % 9 - Ball - Zeppelin Model
 % 10 - Zeppelin - Ball Model
-% 11 - Ball - Zeppelin Model
-% 12 - Zeppelin - Ball Model
-% 13 - Stick - Zeppelin Model
-% 14 - Zeppelin -Stick Model
+% 11 - Stick - Zeppelin Model
+% 12- Zeppelin -Stick Model
 
 
-% 7 - Tensor Model
+% 1000 - Tensor Model %NOT DONE
+
 
 %x0 = get_start_value(lb, ub);
 
@@ -37,20 +37,24 @@ global model_to_fit;
     [u, coordinates] = mask_coodinates_extractor('seg_1.nii.gz');
     [x, y, z] = size(coordinates);
     for coordinate_value = 1 : 1;%x; 
-        for model = 1: 1;%7;
+        for model = 0: 12;
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
             z_val = coordinates(3, coordinate_value);
-            minimised = run_fmincon(model, x_val, y_val, z_val);
-            ranking(model) = minimised;
+            minimised = int64(0);
+            minimised = run_fmincon(model, 101, 91, 26);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
+            ranking(model+1) = minimised;
         end 
     end
     
 function minimised = run_fmincon(model_number, x, y ,z)
     global data;
+    
     global true_signal;
     true_signal = squeeze(data(x, y, z, :));
+    
     global model_to_fit
+    
     switch model_number
         
         % 0 - Ball Model
@@ -58,6 +62,7 @@ function minimised = run_fmincon(model_number, x, y ,z)
         model_to_fit = 0;
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0;
         lb = [0; 0];    
+        ub = [exp(1000); exp(1000)];
         x0 = [0.01; 250];
 
         % 1 - Ball-Ball Model
@@ -74,25 +79,25 @@ function minimised = run_fmincon(model_number, x, y ,z)
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0; ADCGuess(3) = theta; ADCGuess(4) = Phi
         lb = [0; 0; -2*pi; -2*pi];  
         ub = [exp(1000); exp(1000); 2*pi; 2*pi];
-        x0 = [0.003; 200; 0; 0];
+        x0 = [0.1; 250; 0; 0];
 
         % 3 - Stick-Stick Model
         case 3
         model_to_fit = 3;
         %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
-        %ADCGuess(5) = Phi; ADCGuess(6) = f 
+        %ADCGuess(5) = Phi; ADCGuess(6) = theta; %ADCGuess(7) = Phi; ADCGuess(8) = f 
 
-        lb = [0; 0.003; 0; -2*pi; -2*pi; 0];  
-        ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 1];
-        x0 = [0.0001; 0.005; 250; 0; 0; 0.5];    
+        lb = [0; 0.003; 0; -2*pi; -2*pi;-2*pi; -2*pi; 0];  
+        ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 2*pi; 2*pi; 1];
+        x0 = [0.0001; 0.005; 250; 0; 0; 0; 0; 0.5];    
 
         % 4 - IVIM Model
         case 4
         model_to_fit = 4;
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0; ADCGuess(3) = f; ADCGuess(4) = D* (perfusioin coefficent)
-        lb = [0; 0; 0; 0];  
-        ub = [exp(1000); exp(1000); 1; exp(1000)];
-        x0 = [0.0001; 250; 0.5; 0.01];
+        lb = [0; 0; 0; 0.003];  
+        ub = [0.003; exp(1000); 1; exp(1000)];
+        x0 = [0.0001; 250; 0.5; 0.003];
         
         % 5 - Zeppelin Model
         case 5
@@ -101,34 +106,81 @@ function minimised = run_fmincon(model_number, x, y ,z)
         %ADCGuess(4) = alpha; ADCGuess(5) = beta;
         lb = [0; -2*pi; -2*pi; 0 ; 0];  
         ub = [exp(1000); 2*pi; 2*pi; exp(1000); exp(1000)];
-        x0 = [200; 0.01; 0.01; 0.01; 0.01];
+        x0 = [250; 0.003; 0; 0; 0];
         
         % 6 - Zeppelin-Zeppelin Model
         case 6
         model_to_fit = 6;
-        %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
-        %ADCGuess(5) = Phi; %ADCGuess(6) = alpha; ADCGuess(7) = beta;  ADCGuess(8) = theta*;
-        %ADCGuess(9) = Phi*; %ADCGuess(10) = alpha*; ADCGuess(11) = beta*; ADCGuess(12) = f
+        %ADCGuess(1) = S0; ADCGuess(2) = theta; %ADCGuess(3) = Phi; %ADCGuess(4) = alpha; ADCGuess(5) = beta;  
+        %ADCGuess(6) = theta*; %ADCGuess(7) = Phi*; %ADCGuess(8) = alpha*; ADCGuess(9) = beta*; ADCGuess(10) = f
 
-        lb = [0; 0.003; 0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0; 0; 0.5];  
-        ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
-        x0 = [0.0001; 0.005; 250; 0; 0; 0; 0; 0; 0; 0; 0; 0.5];  
+        lb = [0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0; 0; 0.5];  
+        ub = [exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
+        x0 = [250; 0; 0; 0; 0; 0; 0; 0; 0; 0.5];  
              
         % 7 - Ball-Stick Model 
+        case 7
         model_to_fit = 7;
         %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
-        %ADCGuess(5) = Phi; ADCGuess(6) = f 
-        %ADCGuess(1) = ADC ; ADCGuess(2) = S0;
-        lb = [0; 0];  
-        ub = [exp(1000); exp(1000)];
-        x0 = [0.01; 250];
+        %ADCGuess(5) = Phi; ADCGuess(6) = f ;
+        lb = [0; 0.003; 0; -2*pi; -2*pi; 0.5];  
+        ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 1];
+        x0 = [0.0001; 0.005; 250; 0; 0; 0.5];  
+        
+        % 8 - Stick - Ball Model
+        case 8
+        model_to_fit = 8;
+        %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
+        %ADCGuess(5) = Phi; ADCGuess(6) = f ;
+        lb = [0; 0.003; 0; -2*pi; -2*pi; 0.5];  
+        ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 1];
+        x0 = [0.0001; 0.005; 250; 0; 0; 0.5];  
+        
+        % 9 - Ball - Zeppelin Model
+        case 9
+        model_to_fit = 9;
+        %ADCGuess(1) = D ; ADCGuess(2) = S0; ADCGuess(3) = theta;
+        %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; ADCGuess(6) = beta; ADCGuess(7) = f
 
+        lb = [0; 0; -2*pi; -2*pi; 0; 0; 0.5];  
+        ub = [0.003; exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
+        x0 = [0.0001; 250; 0; 0; 0; 0; 0.5];    
+        
+        % 10 - Zeppelin - Ball Model
+        case 10
+        model_to_fit = 10;
+        %ADCGuess(1) = D* (Blood); ADCGuess(2) = S0; ADCGuess(3) = theta;
+        %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; ADCGuess(6) = beta; ADCGuess(7) = f
+
+        lb = [0.003; 0; -2*pi; -2*pi; 0; 0; 0.5];  
+        ub = [exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
+        x0 = [0.005; 250; 0; 0; 0; 0; 0.5];        
+        
+        % 11 - Stick - Zeppelin Model
+        case 11
+        model_to_fit = 11;
+        %ADCGuess(1) = D ; ADCGuess(2) = S0; ADCGuess(3) = theta; %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; 
+        %ADCGuess(6) = beta; ADCGuess(7) = theta; ADCGuess(8) = Phi; ADCGuess(9) = f
+
+        lb = [0; 0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0.5];  
+        ub = [0.003; exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; 1];
+        x0 = [0.0001; 250; 0; 0; 0; 0; 0; 0; 0.5];            
+
+        % 12 - Zeppelin -Stick Model
+        case 12
+        model_to_fit = 12;
+        %ADCGuess(1) = D* (Blood) ; ADCGuess(2) = S0; ADCGuess(3) = theta; %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; 
+        %ADCGuess(6) = beta; ADCGuess(7) = theta; ADCGuess(8) = Phi; ADCGuess(9) = f
+
+        lb = [0.003; 0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0.5];  
+        ub = [exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; 1];
+        x0 = [0.005; 250; 0; 0; 0; 0; 0; 0; 0.5];    
 
     end
 
     ADCopt = fmincon(@cominedOptimise, x0, [], [], [], [], lb, ub);
     disp(ADCopt);
-    plot_ADC(ADCopt);
+    plot_ADC();
     
     global leftover_error;
     minimised = leftover_error;
@@ -139,25 +191,13 @@ end
 function sum = cominedOptimise(ADCGuess)
     global plotsignal;
     
-    global true_signal;
-    
     global protocol_21;
     protocol_21 = double(protocol_21);
     
-    global bValues;
     bValues = protocol_21(:,4);
-
-
-% 7 - Ball- Stick Model
-% 8 - Stick - Ball Model
-% 9 - Ball - Zeppelin Model
-% 10 - Zeppelin - Ball Model
-% 11 - Ball - Zeppelin Model
-% 12 - Zeppelin - Ball Model
-% 13 - Stick - Zeppelin Model
-% 14 - Zeppelin -Stick Model
-
     
+    testSignal = 0;
+
     %Produce Test Signals
     global model_to_fit;
     switch model_to_fit
@@ -198,7 +238,7 @@ function sum = cominedOptimise(ADCGuess)
        % 3 - Stick-Stick Model      
        case 3            
         %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
-        %ADCGuess(5) = Phi; ADCGuess(6) = f 
+        %ADCGuess(5) = Phi; ADCGuess(6) = theta; %ADCGuess(7) = Phi ADCGuess(8) = f 
 
         gx = protocol_21(:,1);
         gy = protocol_21(:,2);
@@ -206,9 +246,11 @@ function sum = cominedOptimise(ADCGuess)
 
          for i = 1:size(bValues)
             G = [gx(i); gy(i); gz(i)];
-            n = [sin(ADCGuess(4))*cos(ADCGuess(5)); sin(ADCGuess(4))* sin(ADCGuess(5)); cos(ADCGuess(4))];
             
-            testSignal(i) =  ADCGuess(6)*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(1))) + (1-ADCGuess(5))*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(2)*(dot(n,G))^2));
+            n1 = [sin(ADCGuess(4))*cos(ADCGuess(5)); sin(ADCGuess(4))* sin(ADCGuess(5)); cos(ADCGuess(4))];
+            n2 = [sin(ADCGuess(6))*cos(ADCGuess(7)); sin(ADCGuess(6))* sin(ADCGuess(7)); cos(ADCGuess(6))];
+            
+            testSignal(i) =  ADCGuess(8)*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(1)*(dot(n1,G))^2)) + (1-ADCGuess(8))*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(2)*(dot(n2,G))^2));
             plotsignal(i) = testSignal(i);
          end
         
@@ -245,10 +287,8 @@ function sum = cominedOptimise(ADCGuess)
       
         % 6 - Zeppelin-Zeppelin Model
         case 6
-        %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
-        %ADCGuess(5) = Phi; %ADCGuess(6) = alpha; ADCGuess(7) = beta;  ADCGuess(8) = theta*;
-        %ADCGuess(9) = Phi*; %ADCGuess(10) = alpha*; ADCGuess(11) = beta*; ADCGuess(12) = f
-            
+        %ADCGuess(1) = S0; ADCGuess(2) = theta; %ADCGuess(3) = Phi; %ADCGuess(4) = alpha; ADCGuess(5) = beta;  
+        %ADCGuess(6) = theta*; %ADCGuess(7) = Phi*; %ADCGuess(8) = alpha*; ADCGuess(9) = beta*; ADCGuess(10) = f            
 
             gx = protocol_21(:,1);
             gy = protocol_21(:,2);
@@ -258,19 +298,144 @@ function sum = cominedOptimise(ADCGuess)
                 G = [gx(i); gy(i); gz(i)];
                 G_t = transpose(G);
                 
-                n = [sin(ADCGuess(4))*cos(ADCGuess(5)); sin(ADCGuess(4))* sin(ADCGuess(5)); cos(ADCGuess(4))];
+                n = [sin(ADCGuess(2))*cos(ADCGuess(3)); sin(ADCGuess(2))* sin(ADCGuess(3)); cos(ADCGuess(2))];
                 n_t = transpose(n);
                 
-                D = (ADCGuess(6)*n*n_t + ADCGuess(7)*eye(3))
+                D = (ADCGuess(4)*n*n_t + ADCGuess(5)*eye(3));
                 
-                n2 = [sin(ADCGuess(8))*cos(ADCGuess(9)); sin(ADCGuess(8))* sin(ADCGuess(9)); cos(ADCGuess(8))];
+                n2 = [sin(ADCGuess(6))*cos(ADCGuess(7)); sin(ADCGuess(6))* sin(ADCGuess(7)); cos(ADCGuess(6))];
                 n_t2 = transpose(n);
                 
-                D2 = (ADCGuess(10)*n2*n_t2 + ADCGuess(11)*eye(3))
+                D2 = (ADCGuess(8)*n2*n_t2 + ADCGuess(9)*eye(3));
                 
-              testSignal(i) =  ADCGuess(12)*(ADCGuess(3)*exp(-1*bValues(i)*G_t*D*(G))) + (1 -ADCGuess(12))*(ADCGuess(3)*exp(-1*bValues(i)*G_t*D2*(G)));
+              testSignal(i) =  ADCGuess(10)*(ADCGuess(1)*exp(-1*bValues(i)*G_t*D*(G))) + (1 -ADCGuess(10))*(ADCGuess(1)*exp(-1*bValues(i)*G_t*D2*(G)));
               plotsignal(i) = testSignal(i);
              end
+             
+        % 7 - Ball-Stick Model 
+        case 7
+        %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
+        %ADCGuess(5) = Phi; ADCGuess(6) = f ;
+            gx = protocol_21(:,1);
+            gy = protocol_21(:,2);
+            gz = protocol_21(:,3);
+
+             for i = 1:size(bValues)
+                G = [gx(i); gy(i); gz(i)];
+                n = [sin(ADCGuess(4))*cos(ADCGuess(5)); sin(ADCGuess(4))* sin(ADCGuess(5)); cos(ADCGuess(4))];
+
+                testSignal(i) =  ADCGuess(6)*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(1))) + (1-ADCGuess(6))*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(2)*(dot(n,G))^2));
+                plotsignal(i) = testSignal(i);
+             end
+        
+  
+        % 8 - Stick-Ball Model   
+        case 8
+            %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = theta;
+            %ADCGuess(5) = Phi; ADCGuess(6) = f ;
+            gx = protocol_21(:,1);
+            gy = protocol_21(:,2);
+            gz = protocol_21(:,3);
+
+             for i = 1:size(bValues)
+                G = [gx(i); gy(i); gz(i)];
+                n = [sin(ADCGuess(4))*cos(ADCGuess(5)); sin(ADCGuess(4))* sin(ADCGuess(5)); cos(ADCGuess(4))];
+
+                testSignal(i) =  ADCGuess(6)*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(1)*(dot(n,G))^2)) + (1-ADCGuess(6))*(ADCGuess(3)*exp(-1*bValues(i)*ADCGuess(2)));
+                plotsignal(i) = testSignal(i);
+             end
+             
+        % 9 - Ball-Zeppelin Model
+        case 9
+        %ADCGuess(1) = D ; ADCGuess(2) = S0; ADCGuess(3) = theta;
+        %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; ADCGuess(6) = beta; ADCGuess(7) = f
+        
+            gx = protocol_21(:,1);
+            gy = protocol_21(:,2);
+            gz = protocol_21(:,3);
+            
+             for i = 1:size(bValues)
+                G = [gx(i); gy(i); gz(i)];
+                G_t = transpose(G);
+                
+                n = [sin(ADCGuess(3))*cos(ADCGuess(4)); sin(ADCGuess(3))* sin(ADCGuess(4)); cos(ADCGuess(3))];
+                n_t = transpose(n);
+                
+                D = (ADCGuess(5)*n*n_t + ADCGuess(6)*eye(3));
+                
+              testSignal(i) =  ADCGuess(7)*(ADCGuess(2)*exp(-1*bValues(i)*ADCGuess(1))) + (1 -ADCGuess(7))*(ADCGuess(2)*exp(-1*bValues(i)*G_t*D*(G)));
+              plotsignal(i) = testSignal(i);
+             end
+             
+        % 10 - Zeppelin-Ball Model
+        case 10
+        %ADCGuess(1) = D* (Blood); ADCGuess(2) = S0; ADCGuess(3) = theta;
+        %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; ADCGuess(6) = beta; ADCGuess(7) = f
+        
+            gx = protocol_21(:,1);
+            gy = protocol_21(:,2);
+            gz = protocol_21(:,3);
+            
+             for i = 1:size(bValues)
+                G = [gx(i); gy(i); gz(i)];
+                G_t = transpose(G);
+                
+                n = [sin(ADCGuess(3))*cos(ADCGuess(4)); sin(ADCGuess(3))* sin(ADCGuess(4)); cos(ADCGuess(3))];
+                n_t = transpose(n);
+                
+                D = (ADCGuess(5)*n*n_t + ADCGuess(6)*eye(3));
+                
+              testSignal(i) =  ADCGuess(7)*(ADCGuess(2)*exp(-1*bValues(i)*G_t*D*(G))) + (1 -ADCGuess(7))*(ADCGuess(2)*exp(-1*bValues(i)*ADCGuess(1)));
+              plotsignal(i) = testSignal(i);
+             end
+
+      % 11 - Stick-Zeppelin Model 
+       case 11  
+       %ADCGuess(1) = D ; ADCGuess(2) = S0; ADCGuess(3) = theta; %ADCGuess(4) = Phi; %ADCGuess(5) = alpha; 
+       %ADCGuess(6) = beta; ADCGuess(7) = theta; ADCGuess(8) = Phi; ADCGuess(9) = f    
+           gx = protocol_21(:,1);
+            gy = protocol_21(:,2);
+            gz = protocol_21(:,3);
+            
+             for i = 1:size(bValues)
+                G = [gx(i); gy(i); gz(i)];
+                G_t = transpose(G);
+                
+                n = [sin(ADCGuess(3))*cos(ADCGuess(4)); sin(ADCGuess(3))* sin(ADCGuess(4)); cos(ADCGuess(3))];
+                n_t = transpose(n);
+                
+                n2 = [sin(ADCGuess(7))*cos(ADCGuess(8)); sin(ADCGuess(7))* sin(ADCGuess(8)); cos(ADCGuess(7))];
+                
+                D = (ADCGuess(5)*n*n_t + ADCGuess(6)*eye(3));
+                
+              testSignal(i) =  ADCGuess(9)*(ADCGuess(2)*exp(-1*bValues(i)*ADCGuess(1)*(dot(n2,G))^2)) + (1 -ADCGuess(9))*(ADCGuess(2)*exp(-1*bValues(i)*G_t*D*(G)));
+              plotsignal(i) = testSignal(i);
+             end
+             
+             
+        % 11 - Zeppelin-Stick Model      
+        case 12    
+        %ADCGuess(1) = D* (Blood) ; ADCGuess(2) = S0; ADCGuess(3) = theta;%ADCGuess(4) = Phi; %ADCGuess(5) = alpha; 
+        %ADCGuess(6) = beta; ADCGuess(7) = theta; ADCGuess(8) = Phi; ADCGuess(9) = f      
+            gx = protocol_21(:,1);
+            gy = protocol_21(:,2);
+            gz = protocol_21(:,3);
+            
+             for i = 1:size(bValues)
+                G = [gx(i); gy(i); gz(i)];
+                G_t = transpose(G);
+                
+                n = [sin(ADCGuess(3))*cos(ADCGuess(4)); sin(ADCGuess(3))* sin(ADCGuess(4)); cos(ADCGuess(3))];
+                n_t = transpose(n);
+                
+                n2 = [sin(ADCGuess(7))*cos(ADCGuess(8)); sin(ADCGuess(7))* sin(ADCGuess(8)); cos(ADCGuess(7))];
+                
+                D = (ADCGuess(5)*n*n_t + ADCGuess(6)*eye(3));
+                
+              testSignal(i) =  ADCGuess(9)*(ADCGuess(2)*exp(-1*bValues(i)*G_t*D*(G))) + (1 -ADCGuess(9))*(ADCGuess(2)*exp(-1*bValues(i)*ADCGuess(1)*(dot(n2,G))^2));
+              plotsignal(i) = testSignal(i);
+             end
+        
              
        case 10000      %MRTrix TENSOR -THIS DOESNT GET USED     
             %ADCGuess(1) = S0 ; ADCGuess(2) = theta; ADCGuess(3) = Phi ;
@@ -311,20 +476,25 @@ function sum = cominedOptimise(ADCGuess)
     end
     
     %Find Mean Squared Error
-    sum = 0;
+    global true_signal;
+    sum = int64(0);
     for i = 1:size(true_signal)
-        sum = sum + (testSignal(i)-true_signal(i))^2;
+        dif_squared = int64((testSignal(i)-true_signal(i))^2);
+        sum = sum + dif_squared;
     end
-    sum = double(sum);
     
     global leftover_error;
     leftover_error = sum;
+    
+    sum = double(sum);  
+
 end
 
 %Plots Estimated Values vs Actual Values
-function foo = plot_ADC(ADCGuess)
+function foo = plot_ADC()
 
     global plotsignal;
+    
     global protocol_21;
     protocol_21 = double(protocol_21);    
     bValues = protocol_21(:,4);
