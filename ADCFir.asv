@@ -54,15 +54,15 @@ global model_to_fit;
             
             %populating the parameter matrix with the returned parameters #
             %find the size of returned parameter
-            maximum_elements = length(returned_parameters); 
+            maximum_elements = max(returned_parameters); 
             
             %loop into returned parameters 
             for para = 1 : maximum_elements
                 parameter_matrix(coordinate_value, model+1, para) = returned_parameters(para);
             end
-            %Throw minimised into the last index of the parameter array
-            %inside the matrix
-            parameter_matrix(coordinate_value, model+1, 13) = minimised; 
+            
+            
+            parameter_matrix(coordinate_value, model+1) = returned_parameters;
             ranking(model+1) = minimised;
         end 
     end
