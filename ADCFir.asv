@@ -6,12 +6,14 @@ global protocol_21;
 protocol_21 = load('protocol_21.txt');
 
 
-global plotsignal;
+
 
 global leftover_error;
 leftover_error = int64(0);
 
 global model_to_fit;
+
+global BIC;
 
 % 0 - Ball Model
 % 1 - Ball-Ball Model
@@ -41,29 +43,32 @@ global model_to_fit;
     
     %3D array that contains 1d: Voxel, 2d: Model Type, 3d: Voxel
     %properties(13, to store max degrees of freedom and minimised)
-    parameter_matrix = zeros(voxel_num, 13, 13); 
+    parameter_matrix = zeros(voxel_num, 13, 13);
+    ranking = zeros(1, 13);
     
     for coordinate_value = 1 : 1;%x; 
         for model = 0: 12;
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
             z_val = coordinates(3, coordinate_value);
-            minimised = int64(0);
+            %minimised = int64(0);
             [minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
             
+
+            BIC = log(51)*length(returned_parameters) + 51*log(minimised);
             
             %populating the parameter matrix with the returned parameters #
             %find the size of returned parameter
-            maximum_elements = max(returned_parameters); 
+            maximum_elements = length(returned_parameters); 
             
             %loop into returned parameters 
             for para = 1 : maximum_elements
                 parameter_matrix(coordinate_value, model+1, para) = returned_parameters(para);
             end
-            
-            
-            parameter_matrix(coordinate_value, model+1) = returned_parameters;
-            ranking(model+1) = minimised;
+            %Throw minimised into the last index of the parameter array
+            %inside the matrix
+            parameter_matrix(coordinate_value, model+1, 13) = BIC; 
+            ranking(model+1) = BIC;
         end 
     end
     
@@ -503,6 +508,8 @@ function sum = cominedOptimise(ADCGuess)
         dif_squared = int64((testSignal(i)-true_signal(i))^2);
         sum = sum + dif_squared;
     end
+    
+    sum = double(sum/51);  
     
     global leftover_error;
     leftover_error = sum;

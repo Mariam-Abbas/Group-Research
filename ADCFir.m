@@ -43,18 +43,19 @@ global BIC;
     
     %3D array that contains 1d: Voxel, 2d: Model Type, 3d: Voxel
     %properties(13, to store max degrees of freedom and minimised)
-    parameter_matrix = zeros(voxel_num, 13, 13); 
+    parameter_matrix = zeros(voxel_num, 13, 13);
+    ranking = zeros(1, 13);
     
     for coordinate_value = 1 : 1;%x; 
         for model = 0: 12;
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
             z_val = coordinates(3, coordinate_value);
-            minimised = int64(0);
+            %minimised = int64(0);
             [minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
             
 
-            BIC = log(51)*size(ADCGuess) + 51*log(minimised);
+            BIC = log(51)*length(returned_parameters) + 51*log(minimised);
             
             %populating the parameter matrix with the returned parameters #
             %find the size of returned parameter
