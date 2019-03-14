@@ -54,7 +54,7 @@ global BIC;
             [minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
             
 
-            BIC = ln(51)*size(ADCGuess) + 51*ln(minimised);
+            BIC = log(51)*size(ADCGuess) + 51*log(minimised);
             
             %populating the parameter matrix with the returned parameters #
             %find the size of returned parameter
