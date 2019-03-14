@@ -13,6 +13,8 @@ leftover_error = int64(0);
 
 global model_to_fit;
 
+global BIC;
+
 % 0 - Ball Model
 % 1 - Ball-Ball Model
 % 2 - Stick Model
@@ -51,6 +53,8 @@ global model_to_fit;
             minimised = int64(0);
             [minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
             
+
+            BIC = ln(51)*size(ADCGuess) + 51*ln(minimised);
             
             %populating the parameter matrix with the returned parameters #
             %find the size of returned parameter
@@ -62,8 +66,8 @@ global model_to_fit;
             end
             %Throw minimised into the last index of the parameter array
             %inside the matrix
-            parameter_matrix(coordinate_value, model+1, 13) = minimised; 
-            ranking(model+1) = minimised;
+            parameter_matrix(coordinate_value, model+1, 13) = BIC; 
+            ranking(model+1) = BIC;
         end 
     end
     
@@ -503,6 +507,8 @@ function sum = cominedOptimise(ADCGuess)
         dif_squared = int64((testSignal(i)-true_signal(i))^2);
         sum = sum + dif_squared;
     end
+    
+    sum = double(sum/51);  
     
     global leftover_error;
     leftover_error = sum;
