@@ -41,14 +41,20 @@ global BIC;
     [u, coordinates] = mask_coodinates_extractor('seg_1.nii.gz');
     [dimensions, voxel_num] = size(coordinates);
     
+    max_x = max(coordinates(1, :)); 
+    max_y = max(coordinates(2, :));
+    max_z = max(coordinates(3, :)); 
+    
     %3D array that contains 1d: Voxel, 2d: Model Type, 3d: Voxel
     %properties(13, to store max degrees of freedom and minimised)
     parameter_matrix = zeros(voxel_num, 13, 13);
     
     ranking = zeros(1, 13);
-    
-    for coordinate_value = 1 : 20;%x; 
-        for model = 0: 12;
+    number_of_voxels = 1233;
+       for model = 0: 12;
+           parameter_map{model+1} = zeros(max_y, max_x, max_z, 20); 
+           for coordinate_value = 1 : number_of_voxels;%x; 
+     
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
             z_val = coordinates(3, coordinate_value);
@@ -68,13 +74,17 @@ global BIC;
             end
             %Throw minimised into the last index of the parameter array
             %inside the matrix
-            parameter_matrix(coordinate_value, model+1, 13) = BIC; 
+            parameter_matrix(coordinate_value, model+1, 13) = BIC;
+            parameter_map{model+1}(y_val, x_val, z_val, 1:length(returned_parameters)) = returned_parameters;
             ranking(model+1) = BIC;
-        end 
+        end
+        figure;
+        imagesc(squeeze(parameter_map{model+1}(:,x_val,:, 1)));
+
     end
-    
+        
     %plot the historgram models 
-    model_historgram_gen(parameter_matrix, 20);
+    %model_historgram_gen(parameter_matrix, number_of_voxels);
     
     
 function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
@@ -93,7 +103,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0;
         lb = [0; 0];    
         ub = [exp(1000); exp(1000)];
-        x0 = [0.01; 250];
+        x0 = [0.0015; 50]; %Ball 0
 
         % 1 - Ball-Ball Model
         case 1
@@ -219,7 +229,7 @@ end
 
 
 %this is the function that gets minimised
-function sum = cominedOptimise(ADCGuess)
+function sum_1 = cominedOptimise(ADCGuess)
     global plotsignal;
     
     global protocol_21;
@@ -508,18 +518,18 @@ function sum = cominedOptimise(ADCGuess)
     
     %Find Mean Squared Error
     global true_signal;
-    sum = int64(0);
+    sum_1 = double(0);
     for i = 1:size(true_signal)
-        dif_squared = int64((testSignal(i)-true_signal(i))^2);
-        sum = sum + dif_squared;
+        dif_squared = double((testSignal(i)-true_signal(i))^2);
+        sum_1 = sum_1 + dif_squared;
     end
     
-    sum = double(sum/51);  
+    sum_1 = double(sum_1/51);  
     
     global leftover_error;
-    leftover_error = sum;
+    leftover_error = sum_1;
     
-    sum = double(sum);  
+    sum_1 = double(sum_1);  
 
 end
 
@@ -660,7 +670,7 @@ function ADC_map = ADC_masked_map(nifti_file, original_data)
     masked_canvas = imadjust(masked_canvas);
     %Output the masked canvas
     figure;
-    imshow(masked_canvas);
+    imagesc(masked_canvas);
     ADC_map = masked_canvas;
 end
 
