@@ -44,16 +44,17 @@ global BIC;
     %3D array that contains 1d: Voxel, 2d: Model Type, 3d: Voxel
     %properties(13, to store max degrees of freedom and minimised)
     parameter_matrix = zeros(voxel_num, 13, 13);
+    
     ranking = zeros(1, 13);
     
-    for coordinate_value = 1 : 1;%x; 
+    for coordinate_value = 1 : 20;%x; 
         for model = 0: 12;
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
             z_val = coordinates(3, coordinate_value);
-            %minimised = int64(0);
-            [minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
-            
+            minimised = int64(0);
+            %[minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
+            [minimised, returned_parameters] = run_fmincon(model, x_val, y_val, z_val);
 
             BIC = log(51)*length(returned_parameters) + 51*log(minimised);
             
@@ -71,6 +72,10 @@ global BIC;
             ranking(model+1) = BIC;
         end 
     end
+    
+    %plot the historgram models 
+    model_historgram_gen(parameter_matrix, 20);
+    
     
 function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
     global data;
@@ -206,7 +211,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
     ADCopt = fmincon(@cominedOptimise, x0, [], [], [], [], lb, ub);
     fitted_parameters = ADCopt;
     disp(ADCopt);
-    plot_ADC();
+    %plot_ADC();
     
     global leftover_error;
     minimised = leftover_error;
