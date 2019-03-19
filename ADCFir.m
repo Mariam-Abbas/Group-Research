@@ -1,6 +1,7 @@
 %Globals:
 global data;
 data = niftiread("nonPregnant1708_2101.nii.gz");
+data = double(data);
 
 global protocol_21;
 protocol_21 = load('protocol_21.txt');
@@ -50,7 +51,7 @@ global BIC;
     parameter_matrix = zeros(voxel_num, 13, 13);
     
     ranking = zeros(1, 13);
-    number_of_voxels = 1233;
+    number_of_voxels = 1;
        for model = 0: 12;
            parameter_map{model+1} = zeros(max_y, max_x, max_z, 20); 
            for coordinate_value = 1 : number_of_voxels;%x; 
@@ -103,15 +104,15 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0;
         lb = [0; 0];    
         ub = [exp(1000); exp(1000)];
-        x0 = [0.0015; 50]; %Ball 0
+        x0 = [0.0015; true_signal(1)]; %Ball 0
 
         % 1 - Ball-Ball Model
         case 1
         model_to_fit = 1;
         %ADCGuess(1) = D ; %ADCGuess(2) = D* (Blood); ADCGuess(3) = S0; ADCGuess(4) = f
-        lb = [0; 0.003; 0; 0];  
+        lb = [0; 0.003; 0; 0];
         ub = [0.003; exp(1000); exp(1000); 1];
-        x0 = [0.0001; 0.005; 250; 0.5];
+        x0 = [0.0015; 0.005; true_signal(1); 0.5]; %ball-ball 1
 
         % 2 - Stick Model
         case 2
@@ -119,8 +120,8 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0; ADCGuess(3) = theta; ADCGuess(4) = Phi
         lb = [0; 0; -2*pi; -2*pi];  
         ub = [exp(1000); exp(1000); 2*pi; 2*pi];
-        x0 = [0.1; 250; 0; 0];
-
+        x0 = [0.0015; true_signal(1); 1; -1]; %stick 2
+        
         % 3 - Stick-Stick Model
         case 3
         model_to_fit = 3;
@@ -129,7 +130,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
 
         lb = [0; 0.003; 0; -2*pi; -2*pi;-2*pi; -2*pi; 0];  
         ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 2*pi; 2*pi; 1];
-        x0 = [0.0001; 0.005; 250; 0; 0; 0; 0; 0.5];    
+        x0 = [0.0015; 0.005; true_signal(1); 0.003; 0.003; 1; -1; 0.5]; %stick stick 3    
 
         % 4 - IVIM Model
         case 4
@@ -137,7 +138,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(1) = ADC ; ADCGuess(2) = S0; ADCGuess(3) = f; ADCGuess(4) = D* (perfusioin coefficent)
         lb = [0; 0; 0; 0.003];  
         ub = [0.003; exp(1000); 1; exp(1000)];
-        x0 = [0.0001; 250; 0.5; 0.003];
+        x0 = [0.0015; true_signal(1); 0.5; 0.003]; % IVIM 4
         
         % 5 - Zeppelin Model
         case 5
@@ -146,7 +147,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(4) = alpha; ADCGuess(5) = beta;
         lb = [0; -2*pi; -2*pi; 0 ; 0];  
         ub = [exp(1000); 2*pi; 2*pi; exp(1000); exp(1000)];
-        x0 = [250; 0.003; 0; 0; 0];
+        x0 = [true_signal(1); 1; -1; 0.003; 0.003]; % Zeppelin 5
         
         % 6 - Zeppelin-Zeppelin Model
         case 6
@@ -156,7 +157,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
 
         lb = [0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0; 0; 0.5];  
         ub = [exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
-        x0 = [250; 0; 0; 0; 0; 0; 0; 0; 0; 0.5];  
+        x0 = [true_signal(1); 1; -1; 0.003; 0.003; 1; -1; 0.003; 0.003; 0.5];  %zeppelin-zeppein 6  
              
         % 7 - Ball-Stick Model 
         case 7
@@ -165,7 +166,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(5) = Phi; ADCGuess(6) = f ;
         lb = [0; 0.003; 0; -2*pi; -2*pi; 0.5];  
         ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 1];
-        x0 = [0.0001; 0.005; 250; 0; 0; 0.5];  
+        x0 = [0.0015; 0.005; true_signal(1); 1; -1; 0.5]; %ball-stick 7 
         
         % 8 - Stick - Ball Model
         case 8
@@ -174,7 +175,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         %ADCGuess(5) = Phi; ADCGuess(6) = f ;
         lb = [0; 0.003; 0; -2*pi; -2*pi; 0.5];  
         ub = [0.003; exp(1000); exp(1000); 2*pi; 2*pi; 1];
-        x0 = [0.0001; 0.005; 250; 0; 0; 0.5];  
+        x0 = [0.0015; 0.005; true_signal(1); 1; -1; 0.5]; % ball-sitck 8 
         
         % 9 - Ball - Zeppelin Model
         case 9
@@ -184,7 +185,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
 
         lb = [0; 0; -2*pi; -2*pi; 0; 0; 0.5];  
         ub = [0.003; exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
-        x0 = [0.0001; 250; 0; 0; 0; 0; 0.5];    
+        x0 = [0.0015; true_signal(1); 1; -1; 0.003; 0.003; 0.5];  %ball-zeppelin 9  
         
         % 10 - Zeppelin - Ball Model
         case 10
@@ -194,7 +195,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
 
         lb = [0.003; 0; -2*pi; -2*pi; 0; 0; 0.5];  
         ub = [exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 1];
-        x0 = [0.005; 250; 0; 0; 0; 0; 0.5];        
+        x0 = [0.005; true_signal(1); 1; -1; 0.003; 0.003; 0.5]; %zeppelin-ball 10      
         
         % 11 - Stick - Zeppelin Model
         case 11
@@ -204,7 +205,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
 
         lb = [0; 0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0.5];  
         ub = [0.003; exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; 1];
-        x0 = [0.0001; 250; 0; 0; 0; 0; 0; 0; 0.5];            
+        x0 = [0.0015; true_signal(1); 1; -1; 0.003; 0.003; 1; -1; 0.5]; %stick-zeppelin 11        
 
         % 12 - Zeppelin -Stick Model
         case 12
@@ -214,14 +215,14 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
 
         lb = [0.003; 0; -2*pi; -2*pi; 0; 0; -2*pi; -2*pi; 0.5];  
         ub = [exp(1000); exp(1000); 2*pi; 2*pi; exp(1000); exp(1000); 2*pi; 2*pi; 1];
-        x0 = [0.005; 250; 0; 0; 0; 0; 0; 0; 0.5];    
+        x0 = [0.005; true_signal(1); 1; -1; 0.003; 0.003; 1; -1; 0.5]; %zeppelin-stick 12  
 
     end
 
     ADCopt = fmincon(@cominedOptimise, x0, [], [], [], [], lb, ub);
     fitted_parameters = ADCopt;
     disp(ADCopt);
-    %plot_ADC();
+    plot_ADC();
     
     global leftover_error;
     minimised = leftover_error;
