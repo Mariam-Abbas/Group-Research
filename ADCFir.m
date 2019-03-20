@@ -16,6 +16,8 @@ global model_to_fit;
 
 global BIC;
 
+global ADCGuess;
+
 % 0 - Ball Model
 % 1 - Ball-Ball Model
 % 2 - Stick Model
@@ -34,35 +36,73 @@ global BIC;
 % 1000 - Tensor Model %NOT DONE
 
 
-%x0 = get_start_value(lb, ub);
-
+    
+   
 
 
 %Run and Display Result:
     [u, coordinates] = mask_coodinates_extractor('seg_1.nii.gz');
+
     [dimensions, voxel_num] = size(coordinates);
+    
+    test_param = zeros(voxel_num, 13, 16);
+    test_param2 = zeros(voxel_num, 13, 16); 
+    
+    for model_no = 1 : 13
+        for voxel_no = 1 : voxel_num
+            test_param(voxel_no, model_no, 14) = coordinates(1, voxel_no); 
+            test_param(voxel_no, model_no, 15) = coordinates(2, voxel_no);
+            test_param(voxel_no, model_no, 16) = coordinates(3, voxel_no);         
+        end
+        test_values = zeros(voxel_num, 1); 
+        test_values(1:400, 1) = 1; 
+        test_values(401: 800, 1) = 2;
+        test_values(801: voxel_num, 1) = 3;
+        test_param(:, model_no, 1) = test_values;
+    end
+    
+    count = 100; 
+    for voxel_no = 1 : voxel_num 
+        
+            test_param2(voxel_no, :, 14) = coordinates(1, voxel_no); 
+            test_param2(voxel_no, :, 15) = coordinates(2, voxel_no);
+            test_param2(voxel_no, :, 16) = coordinates(3, voxel_no);
+            
+            fake_BIC = zeros(1,13);
+            index = floor(count/100);
+            fake_BIC(1, index) = -1; 
+            test_param2(voxel_no, :, 13) = fake_BIC;
+            count = count + 1; 
+    end
+    
+   %test_image_mapping = image_overlapping(coordinates, data(:, :, :, 1), test_param, 1);
+   %test_image_mapping2 = image_overlapping(coordinates, data(:, :, :, 1), test_param2, 2);
+    
+
     
     max_x = max(coordinates(1, :)); 
     max_y = max(coordinates(2, :));
     max_z = max(coordinates(3, :)); 
     
     %3D array that contains 1d: Voxel, 2d: Model Type, 3d: Voxel
-    %properties(13, to store max degrees of freedom and minimised)
-    parameter_matrix = zeros(voxel_num, 13, 13);
+    %properties(13, to store max degrees of freedom and minimised + 3more for coordinates)
+    parameter_matrix = zeros(voxel_num, 13, 13+3);
     
     ranking = zeros(1, 13);
-    number_of_voxels = 1;
-       for model = 0: 12;
-           parameter_map{model+1} = zeros(max_y, max_x, max_z, 20); 
-           for coordinate_value = 1 : number_of_voxels;%x; 
+    number_of_voxels = 500;
+       for model = 10: 10;
+           %parameter_map{model+1} = zeros(max_y, max_x, max_z, 20); 
+           for coordinate_value = 6 : 6;
      
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
             z_val = coordinates(3, coordinate_value);
             minimised = int64(0);
             %[minimised, returned_parameters] = run_fmincon(model, 101, 101, 36);% NICE VOXHAL FOR NOW x_val, y_val, z_val);
+            disp(coordinate_value);
+            %returned_parameters = zeros(12, 1);
             [minimised, returned_parameters] = run_fmincon(model, x_val, y_val, z_val);
-
+            
             BIC = log(51)*length(returned_parameters) + 51*log(minimised);
             
             %populating the parameter matrix with the returned parameters #
@@ -73,17 +113,25 @@ global BIC;
             for para = 1 : maximum_elements
                 parameter_matrix(coordinate_value, model+1, para) = returned_parameters(para);
             end
+            
+            %also input the coordinate of the voxel into the parameter
+            %matrix
+            parameter_matrix(coordinate_value, model+1, 14) = x_val; 
+            parameter_matrix(coordinate_value, model+1, 15) = y_val; 
+            parameter_matrix(coordinate_value, model+1, 16) = z_val;
+            
             %Throw minimised into the last index of the parameter array
             %inside the matrix
             parameter_matrix(coordinate_value, model+1, 13) = BIC;
-            parameter_map{model+1}(y_val, x_val, z_val, 1:length(returned_parameters)) = returned_parameters;
+            %parameter_map{model+1}(y_val, x_val, z_val, 1:length(returned_parameters)) = returned_parameters;
             ranking(model+1) = BIC;
-        end
-        figure;
-        imagesc(squeeze(parameter_map{model+1}(:,x_val,:, 1)));
-
-    end
-        
+          end
+            
+            
+       end
+    adc_map = image_overlapping(coordinates, data(:,:,:,1), parameter_matrix, 1); 
+    best_model_map = image_overlapping(coordinates, data(:, :,:,1), parameter_matrix, 2);
+    
     %plot the historgram models 
     %model_historgram_gen(parameter_matrix, number_of_voxels);
     
@@ -94,7 +142,9 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
     global true_signal;
     true_signal = squeeze(data(x, y, z, :));
     
-    global model_to_fit
+    global model_to_fit;
+    
+    global ADCGuess;
     
     switch model_number
         
@@ -218,11 +268,15 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         x0 = [0.005; true_signal(1); 1; -1; 0.003; 0.003; 1; -1; 0.5]; %zeppelin-stick 12  
 
     end
-
-    ADCopt = fmincon(@cominedOptimise, x0, [], [], [], [], lb, ub);
-    fitted_parameters = ADCopt;
+    
+    options = struct('MaxFunEvals', 5000);
+    for i = 1: 3 
+        ADCopt = fmincon(@cominedOptimise, x0, [], [], [], [], lb, ub, [], options);
+        x0 = ADCopt;
+    end 
+    fitted_parameters = ADCGuess;
     disp(ADCopt);
-    plot_ADC();
+    %plot_ADC();
     
     global leftover_error;
     minimised = leftover_error;
@@ -232,7 +286,7 @@ end
 %this is the function that gets minimised
 function sum_1 = cominedOptimise(ADCGuess)
     global plotsignal;
-    
+    global ADCGuess
     global protocol_21;
     protocol_21 = double(protocol_21);
     
