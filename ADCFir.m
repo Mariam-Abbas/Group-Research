@@ -15,8 +15,8 @@ leftover_error = int64(0);
 global model_to_fit;
 
 global BIC;
+global param; 
 
-global ADCGuess;
 
 % 0 - Ball Model
 % 1 - Ball-Ball Model
@@ -75,7 +75,7 @@ global ADCGuess;
             count = count + 1; 
     end
     
-   %test_image_mapping = image_overlapping(coordinates, data(:, :, :, 1), test_param, 1);
+   test_image_mapping = image_overlapping(coordinates, data(:, :, :, 1), test_param, 1, 13);
    %test_image_mapping2 = image_overlapping(coordinates, data(:, :, :, 1), test_param2, 2);
     
 
@@ -87,12 +87,12 @@ global ADCGuess;
     %3D array that contains 1d: Voxel, 2d: Model Type, 3d: Voxel
     %properties(13, to store max degrees of freedom and minimised + 3more for coordinates)
     parameter_matrix = zeros(voxel_num, 13, 13+3);
-    
+    sigma = 1/20; 
     ranking = zeros(1, 13);
-    number_of_voxels = 500;
-       for model = 10: 10;
+    number_of_voxels = voxel_num;
+       for model = 0: 1;
            %parameter_map{model+1} = zeros(max_y, max_x, max_z, 20); 
-           for coordinate_value = 6 : 6;
+           for coordinate_value = 1 : number_of_voxels;
      
             x_val = coordinates(1, coordinate_value);
             y_val = coordinates(2, coordinate_value);
@@ -103,7 +103,7 @@ global ADCGuess;
             %returned_parameters = zeros(12, 1);
             [minimised, returned_parameters] = run_fmincon(model, x_val, y_val, z_val);
             
-            BIC = log(51)*length(returned_parameters) + 51*log(minimised);
+            BIC = log(51)*length(returned_parameters) - 2*(-1/(2*(sigma)^2))*minimised;
             
             %populating the parameter matrix with the returned parameters #
             %find the size of returned parameter
@@ -111,7 +111,7 @@ global ADCGuess;
             
             %loop into returned parameters 
             for para = 1 : maximum_elements
-                parameter_matrix(coordinate_value, model+1, para) = returned_parameters(para);
+                parameter_matrix(coordinate_value, model+1, para) = param(para);
             end
             
             %also input the coordinate of the voxel into the parameter
@@ -125,12 +125,10 @@ global ADCGuess;
             parameter_matrix(coordinate_value, model+1, 13) = BIC;
             %parameter_map{model+1}(y_val, x_val, z_val, 1:length(returned_parameters)) = returned_parameters;
             ranking(model+1) = BIC;
-          end
-            
-            
+           end
        end
-    adc_map = image_overlapping(coordinates, data(:,:,:,1), parameter_matrix, 1); 
-    best_model_map = image_overlapping(coordinates, data(:, :,:,1), parameter_matrix, 2);
+    adc_map = image_overlapping(coordinates, data(:,:,:,1), parameter_matrix, 1, 2); 
+    best_model_map = image_overlapping(coordinates, data(:, :,:,1), parameter_matrix, 2, 2);
     
     %plot the historgram models 
     %model_historgram_gen(parameter_matrix, number_of_voxels);
@@ -144,7 +142,7 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
     
     global model_to_fit;
     
-    global ADCGuess;
+    global param; 
     
     switch model_number
         
@@ -268,14 +266,14 @@ function [minimised, fitted_parameters] = run_fmincon(model_number, x, y ,z)
         x0 = [0.005; true_signal(1); 1; -1; 0.003; 0.003; 1; -1; 0.5]; %zeppelin-stick 12  
 
     end
-    
-    options = struct('MaxFunEvals', 5000);
+    options = optimset('Display','off');
+    %options = struct('MaxFunEvals', 5000);
     for i = 1: 3 
         ADCopt = fmincon(@cominedOptimise, x0, [], [], [], [], lb, ub, [], options);
-        x0 = ADCopt;
+        x0 = param;
     end 
-    fitted_parameters = ADCGuess;
-    disp(ADCopt);
+    fitted_parameters = param;
+    %disp(ADCopt);
     %plot_ADC();
     
     global leftover_error;
@@ -286,7 +284,6 @@ end
 %this is the function that gets minimised
 function sum_1 = cominedOptimise(ADCGuess)
     global plotsignal;
-    global ADCGuess
     global protocol_21;
     protocol_21 = double(protocol_21);
     
@@ -579,8 +576,8 @@ function sum_1 = cominedOptimise(ADCGuess)
         sum_1 = sum_1 + dif_squared;
     end
     
-    sum_1 = double(sum_1/51);  
-    
+    global param; 
+    param = ADCGuess;
     global leftover_error;
     leftover_error = sum_1;
     

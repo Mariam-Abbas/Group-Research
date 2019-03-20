@@ -172,11 +172,6 @@ function image_overlap = image_overlapping(seg_coordinates, original_data, mappe
                 lots_of_canvas(y_val, x_val, 3, 1) = blue_val; 
 
             end    
-            
-        case 3 %Mean diffusivity 
-            
-            
-            
     end
     
     
